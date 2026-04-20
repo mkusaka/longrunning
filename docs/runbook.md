@@ -17,7 +17,34 @@ This creates, when missing:
 
 ## 2. Start a Mainline Campaign
 
-Use an unlimited campaign for a fresh long-running job:
+Use the supervised launcher for a fresh long-running job:
+
+```bash
+bash scripts/run_codex_campaign_supervised.sh \
+  /path/to/target-repo \
+  prompts/noninteractive_hybrid_prompt.md \
+  /path/to/run-root \
+  30 gpt-5.4 3600 12
+```
+
+Arguments:
+
+- repo path
+- prompt file
+- run root
+- `poll_seconds`
+- model
+- `stall_seconds`
+- `max_iterations_per_batch`
+
+What it does:
+
+- starts an unlimited campaign
+- attaches a supervisor
+- watches for a live iteration that stops updating output
+- kills and relaunches the campaign when that happens
+
+If you want the lower-level primitives, you can still call:
 
 ```bash
 bash scripts/run_codex_campaign.sh \
@@ -26,17 +53,6 @@ bash scripts/run_codex_campaign.sh \
   /path/to/run-root \
   0 12 3 gpt-5.4
 ```
-
-Arguments:
-
-- repo path
-- prompt file
-- run root
-- `max_batches`
-  - `0` means unlimited
-- `max_iterations_per_batch`
-- `max_review_rounds`
-- model
 
 ## 3. Understand the Process Tree
 
@@ -115,6 +131,12 @@ This waits for the current campaign to end, then relaunches an unlimited campaig
 - objective-open TODO items remain
 - there are no blocked TODOs
 
+It also kills and relaunches the campaign if:
+
+- the latest live `iter-*` has `run.jsonl`
+- `last_message.txt` is still missing
+- and `run.jsonl` has not changed for longer than the configured stall threshold
+
 ## 6. Review Gate Behavior
 
 Review runs only after:
@@ -190,10 +212,28 @@ Action:
 - avoid unnecessary sidecars
 - only restart intentionally if the current thread stops being productive
 
+### The process is alive but the latest iteration never finishes
+
+Usually means:
+
+- the worker is wedged
+- the process is alive but no longer making progress
+
+Action:
+
+- use the supervised launcher so this is handled automatically
+- or attach `continue_until_complete.sh` with a stall threshold
+
+You can inspect the live run state directly:
+
+```bash
+python3 scripts/check_run_state.py /path/to/run-root 3600
+```
+
 ## 8. Minimal Operating Checklist
 
 - bootstrap durable repo files
-- start unlimited campaign
+- start supervised unlimited campaign
 - watch TODO gate, not feelings
 - use sidecars only for focused investigation
 - never let inner worker run its own review

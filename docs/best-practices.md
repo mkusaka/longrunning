@@ -35,6 +35,8 @@ The winning shape is:
 6. `run_codex_watchdog_with_review.sh` skips review until TODO is really clear.
 7. `run_codex_campaign.sh` keeps batches going until completion or a true blocker.
 8. `continue_until_complete.sh` can attach to an already-running finite campaign and chain it into an unlimited one.
+9. `check_run_state.py` detects a live iteration that has stopped producing output.
+10. `run_codex_campaign_supervised.sh` makes stall recovery the default entrypoint.
 
 ## Why Agents Stop Early
 
@@ -80,6 +82,13 @@ The real stop condition should be:
 - objective-open TODO items are zero and blocked items are zero
 - external review has no actionable findings
 
+That also means the harness must detect a worker that is:
+
+- still alive at the OS level
+- but no longer updating its live iteration output
+
+and restart it automatically.
+
 ### 4. Nested review is unreliable
 
 If the main worker spawns its own review worker, you create extra failure modes:
@@ -112,6 +121,22 @@ The sweet spot is:
 
 - one main coding worker
 - short-lived sidecar investigations only when needed
+
+### 7. Live-output stall detection is worth having
+
+Long-running Codex sessions can become:
+
+- alive but wedged
+- alive but no longer writing `run.jsonl`
+- alive but stuck after the next `iter-*` directory was created
+
+The generic signal is:
+
+- latest `iter-*` has `run.jsonl`
+- latest `iter-*` does not have `last_message.txt`
+- `run.jsonl` has not changed for longer than a configured threshold
+
+That should be treated as a recoverable infrastructure stall, not as useful work.
 
 ## Durable State Rules
 
@@ -190,6 +215,7 @@ The harness should always:
 - parse TODO state after every iteration
 - skip review while objective-open TODO items remain
 - run review externally when TODO is clear
+- optionally detect stalled live iterations and restart the campaign automatically
 
 ## Truth Sources During a Live Run
 
@@ -202,6 +228,8 @@ When the run is active, the truth comes from:
 5. current `TODO.md` parsed through `todo_state.py`
 
 Do not over-trust stale status files without checking processes and latest iter output.
+
+If the process is alive but latest live iteration output has not changed for too long, trust the file timestamps over the process liveness.
 
 ## When to Use Sidecar Agents
 

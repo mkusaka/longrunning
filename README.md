@@ -38,11 +38,11 @@ Quick start:
 ```bash
 bash scripts/bootstrap_repo_state.sh /path/to/target-repo
 
-bash scripts/run_codex_campaign.sh \
+bash scripts/run_codex_campaign_supervised.sh \
   /path/to/target-repo \
   prompts/noninteractive_hybrid_prompt.md \
   /path/to/run-root \
-  0 12 3 gpt-5.4
+  30 gpt-5.4 3600 12
 ```
 
 If you already have a finite campaign in flight and do not want to interrupt it:
@@ -52,7 +52,8 @@ bash scripts/continue_until_complete.sh \
   <campaign-pid> \
   /path/to/target-repo \
   prompts/noninteractive_hybrid_prompt.md \
-  /path/to/run-root
+  /path/to/run-root \
+  30 gpt-5.4 3600
 ```
 
 Contents:
